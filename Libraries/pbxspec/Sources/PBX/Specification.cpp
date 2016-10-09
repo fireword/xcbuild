@@ -93,15 +93,14 @@ parse(Context *context, plist::Dictionary const *dict, std::unordered_set<std::s
     }
 
     if (BO != nullptr) {
-        auto basedOn           = BO->value();
+        std::string const &basedOn = BO->value();
+        std::string::size_type colon = basedOn.find(':');
 
-        _basedOnDomain     = _domain;
-        _basedOnIdentifier = basedOn;
-
-        auto colon = basedOn.find(':');
         if (colon != std::string::npos) {
             _basedOnDomain     = basedOn.substr(0, colon);
             _basedOnIdentifier = basedOn.substr(colon + 1);
+        } else {
+            _basedOnIdentifier = BO->value();
         }
     }
 

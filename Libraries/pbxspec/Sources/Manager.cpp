@@ -306,23 +306,27 @@ addSpecification(PBX::Specification::shared_ptr const &spec)
 bool Manager::
 inheritSpecification(PBX::Specification::shared_ptr const &specification)
 {
-    if (specification->basedOnIdentifier() && specification->basedOnDomain() && specification->base() == nullptr) {
+    if (specification->basedOnIdentifier() && specification->base() == nullptr) {
         /*
          * Search the specified domain then in any domain. Some specifications inherit
          * from domain/identifier pairs that don't exist in practice, but by using any
          * domain they can successfully inherit from something potentially relevant.
          */
-        std::vector<std::string> domains = { *specification->basedOnDomain(), AnyDomain() };
+        std::vector<std::string> domains;
+        if (specification->basedOnDomain()) {
+            domains.push_back(*specification->basedOnDomain());
+        }
+        domains.push_back(AnyDomain());
 
         /* Find the base specification. */
         auto base = this->specification(specification->type(), *specification->basedOnIdentifier(), domains);
         if (base == nullptr) {
-            fprintf(stderr, "error: cannot find base %s specification '%s:%s'\n", specification->type(), specification->basedOnDomain()->c_str(), specification->basedOnIdentifier()->c_str());
+            fprintf(stderr, "error: cannot find base %s:%s (%s) for %s:%s (%s)\n", specification->basedOnDomain().value_or("<unspecified>").c_str(), specification->basedOnIdentifier()->c_str(), specification->type(), specification->domain().c_str(), specification->identifier().c_str(), specification->type());
             return false;
         }
 
 #if 0
-        fprintf(stderr, "debug: inheriting %s:%s (%s) from %s:%s (%s)\n", specification->domain().c_str(), specification->identifier().c_str(), specification->type(), base->domain().c_str(), base->identifier().c_str(), base->type());
+        fprintf(stderr, "debug: inheriting %s:%s (%s) from %s:%s (%s); is based on %s:%s\n", specification->domain().c_str(), specification->identifier().c_str(), specification->type(), base->domain().c_str(), base->identifier().c_str(), base->type(), specification->basedOnDomain().value_or("<unspecified>").c_str(), specification->basedOnIdentifier()->c_str());
 #endif
 
         /*
@@ -399,7 +403,7 @@ registerDomains(Filesystem const *filesystem, std::vector<std::pair<std::string,
     }
 
     /*
-     * Mark all of the domains regsitered. This is after all of the inputs so the
+     * Mark all of the domains registered. This is after all of the inputs so the
      * same domain can be registered multiple times (loaded from multiple paths)
      * in a single registration, but can't be registered twice outside that.
      */
@@ -455,9 +459,14 @@ registerBuildRules(Filesystem const *filesystem, std::string const &path)
 }
 
 Manager::shared_ptr Manager::
-Create(void)
+Create(Filesystem const *filesystem, std::vector<std::string> const &buildRules, std::vector<std::pair<std::string, std::string>> const &domains)
 {
-    return std::make_shared <Manager> ();
+    Manager::shared_ptr manager = std::make_shared<Manager>();
+    manager->registerDomains(filesystem, domains);
+    for (std::string const &path : buildRules) {
+        manager->registerBuildRules(filesystem, path);
+    }
+    return manager;
 }
 
 std::string Manager::
@@ -499,6 +508,7 @@ PlatformDomains(std::unordered_map<std::string, std::string> const &platforms)
     auto iphoneos = platforms.find("iphoneos");
     if (iphoneos != platforms.end()) {
         std::string root = iphoneos->second + "/Developer/Library/Xcode/PrivatePlugIns/IDEiOSPlatformSupportCore.ideplugin/Contents/Resources";
+        domains.push_back({ "iphoneos-shared", root + "/" + "Shared.xcspec" });
         domains.push_back({ "iphoneos", root + "/" + "Device.xcspec" });
         domains.push_back({ "iphonesimulator", root + "/" + "Simulator.xcspec" });
     }
@@ -506,18 +516,16 @@ PlatformDomains(std::unordered_map<std::string, std::string> const &platforms)
     auto appletvos = platforms.find("appletvos");
     if (appletvos != platforms.end()) {
         std::string root = appletvos->second + "/Developer/Library/Xcode/PrivatePlugIns/IDEAppleTVSupportCore.ideplugin/Contents/Resources";
-        domains.push_back({ "appletvos", root + "/" + "Shared.xcspec" });
+        domains.push_back({ "appletvos-shared", root + "/" + "Shared.xcspec" });
         domains.push_back({ "appletvos", root + "/" + "Device.xcspec" });
-        domains.push_back({ "appletvsimulator", root + "/" + "Shared.xcspec" });
         domains.push_back({ "appletvsimulator", root + "/" + "Simulator.xcspec" });
     }
 
     auto watchos = platforms.find("watchos");
     if (watchos != platforms.end()) {
         std::string root = watchos->second + "/Developer/Library/Xcode/PrivatePlugIns/IDEWatchSupportCore.ideplugin/Contents/Resources";
-        domains.push_back({ "watchos", root + "/" + "Shared.xcspec" });
+        domains.push_back({ "watchos-shared", root + "/" + "Shared.xcspec" });
         domains.push_back({ "watchos", root + "/" + "Device.xcspec" });
-        domains.push_back({ "watchsimulator", root + "/" + "Shared.xcspec" });
         domains.push_back({ "watchsimulator", root + "/" + "Simulator.xcspec" });
     }
 

@@ -34,28 +34,6 @@ Default(process::Context const *processContext, Filesystem const *filesystem)
         return ext::nullopt;
     }
 
-    auto specManager = pbxspec::Manager::Create();
-    if (specManager == nullptr) {
-        fprintf(stderr, "error: couldn't create spec manager\n");
-        return ext::nullopt;
-    }
-
-    /*
-     * Register global build rules.
-     */
-    std::vector<std::string> buildRules = pbxspec::Manager::DeveloperBuildRules(*developerRoot);
-    for (std::string const &path : buildRules) {
-        if (filesystem->isReadable(path) && !specManager->registerBuildRules(filesystem, path)) {
-            fprintf(stderr, "error: couldn't register build rules\n");
-            return ext::nullopt;
-        }
-    }
-
-    /*
-     * Register global specifications.
-     */
-    specManager->registerDomains(filesystem, pbxspec::Manager::DefaultDomains(*developerRoot));
-
     auto configuration = xcsdk::Configuration::Load(filesystem, xcsdk::Configuration::DefaultPaths(processContext));
     auto sdkManager = xcsdk::SDK::Manager::Open(filesystem, *developerRoot, configuration);
     if (sdkManager == nullptr) {
@@ -64,18 +42,42 @@ Default(process::Context const *processContext, Filesystem const *filesystem)
     }
 
     /*
-     * Register platform-specific specifications.
+     * Collect specification domains to register.
      */
+    std::vector<std::pair<std::string, std::string>> domains;
+
+    /* Global specifications. */
+    std::vector<std::pair<std::string, std::string>> defaultDomains = pbxspec::Manager::DefaultDomains(*developerRoot);
+    domains.insert(domains.end(), defaultDomains.begin(), defaultDomains.end());
+
+    /* Platform-specific specifications. */
     std::unordered_map<std::string, std::string> platforms;
     for (xcsdk::SDK::Platform::shared_ptr const &platform : sdkManager->platforms()) {
         platforms.insert({ platform->name(), platform->path() });
     }
-    specManager->registerDomains(filesystem, pbxspec::Manager::PlatformDomains(platforms));
+    std::vector<std::pair<std::string, std::string>> platformDomains = pbxspec::Manager::PlatformDomains(platforms);
+    domains.insert(domains.end(), platformDomains.begin(), platformDomains.end());
+
+    /* Platform-dependent specifications. */
+    std::vector<std::pair<std::string, std::string>> platformDependentDomains = pbxspec::Manager::PlatformDependentDomains(*developerRoot);
+    domains.insert(domains.end(), platformDependentDomains.begin(), platformDependentDomains.end());
+
+    /* Global build rules. */
+    std::vector<std::string> buildRules;
+    for (std::string const &path : pbxspec::Manager::DeveloperBuildRules(*developerRoot)) {
+        if (filesystem->isReadable(path)) {
+            buildRules.push_back(path);
+        }
+    }
 
     /*
-     * Register global specifications, but depend on platform-specific specifications.
+     * Load specification domains.
      */
-    specManager->registerDomains(filesystem, pbxspec::Manager::PlatformDependentDomains(*developerRoot));
+    auto specManager = pbxspec::Manager::Create(filesystem, buildRules, domains);
+    if (specManager == nullptr) {
+        fprintf(stderr, "error: couldn't create spec manager\n");
+        return ext::nullopt;
+    }
 
     pbxspec::PBX::BuildSystem::shared_ptr buildSystem = specManager->buildSystem("com.apple.build-system.core", { "default" });
     if (buildSystem == nullptr) {

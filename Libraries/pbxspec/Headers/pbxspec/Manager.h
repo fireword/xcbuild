@@ -126,24 +126,8 @@ public:
     PBX::BuildRule::vector synthesizedBuildRules(std::vector<std::string> const &domains) const;
 
 public:
-    void registerDomains(libutil::Filesystem const *filesystem, std::vector<std::pair<std::string, std::string>> const &domains);
-    bool registerBuildRules(libutil::Filesystem const *filesystem, std::string const &path);
-
-private:
-    void addSpecification(PBX::Specification::shared_ptr const &specification);
-    bool inheritSpecification(PBX::Specification::shared_ptr const &specification);
-
-private:
-    template <typename T>
-    typename T::shared_ptr
-    findSpecification(std::vector<std::string> const &domains, std::string const &identifier, char const *type = T::Type()) const;
-    template <typename T>
-    typename T::vector
-    findSpecifications(std::vector<std::string> const &domains, char const *type = T::Type()) const;
-
-public:
     static Manager::shared_ptr
-    Create(void);
+    Create(libutil::Filesystem const *filesystem, std::vector<std::string> const &buildRules, std::vector<std::pair<std::string, std::string>> const &domains);
 
 public:
     static std::string
@@ -160,6 +144,23 @@ public:
 public:
     static std::vector<std::string>
     DeveloperBuildRules(std::string const &developerRoot);
+
+private:
+    void registerDomains(libutil::Filesystem const *filesystem, std::vector<std::pair<std::string, std::string>> const &domains);
+    bool registerBuildRules(libutil::Filesystem const *filesystem, std::string const &path);
+
+private:
+    void addSpecification(PBX::Specification::shared_ptr const &specification);
+    bool inheritSpecification(PBX::Specification::shared_ptr const &specification);
+
+private:
+    template <typename T>
+    typename T::shared_ptr
+    findSpecification(std::vector<std::string> const &domains, std::string const &identifier, char const *type = T::Type()) const;
+    template <typename T>
+    typename T::vector
+    findSpecifications(std::vector<std::string> const &domains, char const *type = T::Type()) const;
+
 };
 
 }

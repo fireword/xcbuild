@@ -28,8 +28,8 @@ main(int argc, char **argv)
     }
 
     std::string path = argv[1];
-    Manager::shared_ptr manager = Manager::Create();
-    manager->registerDomains(&filesystem, { { "xcspec", path } });
+    Manager::shared_ptr manager = Manager::Create(&filesystem, { }, { { "default", path } });
+    (void)manager;
 
     return 0;
 }
