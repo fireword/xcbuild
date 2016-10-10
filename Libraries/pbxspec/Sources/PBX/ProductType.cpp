@@ -21,13 +21,17 @@ using pbxsetting::Setting;
 
 ProductType::
 ProductType() :
-    Specification()
+    Specification      (),
+    _infoPlistAdditions(nullptr)
 {
 }
 
 ProductType::
 ~ProductType()
 {
+    if (_infoPlistAdditions) {
+        _infoPlistAdditions->release();
+    }
 }
 
 ProductType::shared_ptr ProductType::
@@ -55,28 +59,36 @@ parse(Context *context, plist::Dictionary const *dict, std::unordered_set<std::s
 
     auto unpack = plist::Keys::Unpack("ProductType", dict, seen);
 
-    auto DTN   = unpack.cast <plist::String> ("DefaultTargetName");
-    auto DBP   = unpack.cast <plist::Dictionary> ("DefaultBuildProperties");
-    auto V     = unpack.cast <plist::Dictionary> ("Validation");
-    auto INP   = unpack.cast <plist::String> ("IconNamePrefix");
-    auto PTs   = unpack.cast <plist::Array> ("PackageTypes");
-    auto HIP   = unpack.coerce <plist::Boolean> ("HasInfoPlist");
-    auto HIPS  = unpack.coerce <plist::Boolean> ("HasInfoPlistStrings");
-    auto IW    = unpack.coerce <plist::Boolean> ("IsWrapper");
-    auto IJ    = unpack.coerce <plist::Boolean> ("IsJava");
-    auto SZL   = unpack.coerce <plist::Boolean> ("SupportsZeroLink");
-    auto APSS  = unpack.coerce <plist::Boolean> ("AlwaysPerformSeparateStrip");
-    auto WSTE  = unpack.coerce <plist::Boolean> ("WantsSimpleTargetEditing");
-    auto AWCR  = unpack.coerce <plist::Boolean> ("AddWatchCompanionRequirement");
-    auto ROP   = unpack.coerce <plist::Boolean> ("RunsOnProxy");
-    auto DSA   = unpack.coerce <plist::Boolean> ("DisableSchemeAutocreation");
-    auto VEB   = unpack.coerce <plist::Boolean> ("ValidateEmbeddedBinaries");
-    auto SODR  = unpack.coerce <plist::Boolean> ("SupportsOnDemandResources");
-    auto CEAL  = unpack.coerce <plist::Boolean> ("CanEmbedAddressSanitizerLibraries");
+    auto DTN    = unpack.cast <plist::String> ("DefaultTargetName");
+    auto DBP    = unpack.cast <plist::Dictionary> ("DefaultBuildProperties");
+    auto V      = unpack.cast <plist::Dictionary> ("Validation");
+    auto INP    = unpack.cast <plist::String> ("IconNamePrefix");
+    auto PTs    = unpack.cast <plist::Array> ("PackageTypes");
+    auto HIP    = unpack.coerce <plist::Boolean> ("HasInfoPlist");
+    auto HIPS   = unpack.coerce <plist::Boolean> ("HasInfoPlistStrings");
+    auto IW     = unpack.coerce <plist::Boolean> ("IsWrapper");
+    auto IJ     = unpack.coerce <plist::Boolean> ("IsJava");
+    auto SZL    = unpack.coerce <plist::Boolean> ("SupportsZeroLink");
+    auto APSS   = unpack.coerce <plist::Boolean> ("AlwaysPerformSeparateStrip");
+    auto WSTE   = unpack.coerce <plist::Boolean> ("WantsSimpleTargetEditing");
+    auto WSTEWC = unpack.coerce <plist::Boolean> ("WantsSimpleTargetEditingWithoutCapabilities");
+    auto AWCR   = unpack.coerce <plist::Boolean> ("AddWatchCompanionRequirement");
+    auto ROP    = unpack.coerce <plist::Boolean> ("RunsOnProxy");
+    auto DSA    = unpack.coerce <plist::Boolean> ("DisableSchemeAutocreation");
+    auto VEB    = unpack.coerce <plist::Boolean> ("ValidateEmbeddedBinaries");
+    auto SODR   = unpack.coerce <plist::Boolean> ("SupportsOnDemandResources");
+    auto CEASL  = unpack.coerce <plist::Boolean> ("CanEmbedAddressSanitizerLibraries");
+    auto CECSL  = unpack.coerce <plist::Boolean> ("CanEmbedCompilerSanitizerLibraries");
+    auto PPR    = unpack.coerce <plist::Boolean> ("ProvisioningProfileRequired");
+    auto PPS    = unpack.coerce <plist::Boolean> ("ProvisioningProfileSupported");
     auto RSEF  = unpack.coerce <plist::String> ("RunpathSearchPathForEmbeddedFrameworks");
-    auto IE    = unpack.coerce <plist::Boolean> ("IsEmbeddable");
-    auto BPIWE = unpack.coerce <plist::Array> ("BuildPhaseInjectionsWhenEmbedding");
-    auto RBPD  = unpack.coerce <plist::String> ("RequiredBuiltProductsDir");
+    auto IE     = unpack.coerce <plist::Boolean> ("IsEmbeddable");
+    auto BPIWE  = unpack.coerce <plist::Array> ("BuildPhaseInjectionsWhenEmbedding");
+    auto RBPD   = unpack.coerce <plist::String> ("RequiredBuiltProductsDir");
+    auto ABPs   = unpack.cast <plist::Array> ("AllowedBuildPhases");
+    auto AFTs   = unpack.cast <plist::Dictionary> ("AllowedFileTypes");
+    auto BPFRAs = unpack.cast <plist::Dictionary> ("BuildPhaseFileRefAdditions");
+    auto IPAs   = unpack.cast <plist::Dictionary> ("InfoPlistAdditions");
 
     if (!unpack.complete(check)) {
         fprintf(stderr, "%s", unpack.errorText().c_str());
@@ -146,6 +158,10 @@ parse(Context *context, plist::Dictionary const *dict, std::unordered_set<std::s
         _wantsSimpleTargetEditing = WSTE->value();
     }
 
+    if (WSTEWC != nullptr) {
+        _wantsSimpleTargetEditingWithoutCapabilities = WSTEWC->value();
+    }
+
     if (AWCR != nullptr) {
         _addWatchCompanionRequirement = AWCR->value();
     }
@@ -166,8 +182,20 @@ parse(Context *context, plist::Dictionary const *dict, std::unordered_set<std::s
         _supportsOnDemandResources = SODR->value();
     }
 
-    if (CEAL != nullptr) {
-        _canEmbedAddressSanitizerLibraries = CEAL->value();
+    if (CEASL != nullptr) {
+        _canEmbedAddressSanitizerLibraries = CEASL->value();
+    }
+
+    if (CECSL != nullptr) {
+        _canEmbedCompilerSanitizerLibraries = CECSL->value();
+    }
+
+    if (PPR != nullptr) {
+        _provisioningProfileRequired = PPR->value();
+    }
+
+    if (PPS != nullptr) {
+        _provisioningProfileSupported = PPS->value();
     }
 
     if (RSEF != nullptr) {
@@ -195,6 +223,54 @@ parse(Context *context, plist::Dictionary const *dict, std::unordered_set<std::s
         _requiredBuiltProductsDir = RBPD->value();
     }
 
+    if (ABPs != nullptr) {
+        _allowedBuildPhases = std::vector<std::string>();
+        for (size_t n = 0; n < ABPs->count(); n++) {
+            if (auto ABP = ABPs->value<plist::String>(n)) {
+                _allowedBuildPhases->push_back(ABP->value());
+            }
+        }
+    }
+
+    if (AFTs != nullptr) {
+        _allowedFileTypes = std::unordered_map<std::string, std::vector<std::string>>();
+        for (size_t n = 0; n < AFTs->count(); n++) {
+            if (auto AFT = AFTs->value<plist::Array>(n)) {
+                auto result = _allowedFileTypes->insert({ AFTs->key(n), std::vector<std::string>() });
+
+                for (size_t m = 0; m < AFT->count(); m++) {
+                    if (auto FT = AFT->value<plist::String>(m)) {
+                        std::vector<std::string> *allowedFileTypes = &result.first->second;
+                        allowedFileTypes->push_back(FT->value());
+                    }
+                }
+            }
+        }
+    }
+
+    if (BPFRAs != nullptr) {
+        _buildPhaseFileRefAdditions = std::unordered_map<std::string, std::vector<FileReference>>();
+        for (size_t n = 0; n < BPFRAs->count(); n++) {
+            if (auto BPFRA = BPFRAs->value<plist::Array>(n)) {
+                for (size_t m = 0; m < BPFRA->count(); m++) {
+                    if (auto FRA = BPFRA->value<plist::Dictionary>(m)) {
+                        auto result = _buildPhaseFileRefAdditions->insert({ BPFRAs->key(n), std::vector<FileReference>() });
+
+                        FileReference fileReference;
+                        if (fileReference.parse(FRA)) {
+                            std::vector<FileReference> *fileRefAdditions = &result.first->second;
+                            fileRefAdditions->push_back(fileReference);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    if (IPAs != nullptr) {
+        _infoPlistAdditions = IPAs->copy().release();
+    }
+
     return true;
 }
 
@@ -215,28 +291,36 @@ inherit(ProductType::shared_ptr const &b)
 
     auto base = this->base();
 
-    _defaultTargetName                      = Inherit::Override(_defaultTargetName, base->_defaultTargetName);
-    _defaultBuildProperties                 = Inherit::Combine(_defaultBuildProperties, base->_defaultBuildProperties);
-    _validation                             = Inherit::Override(_validation, base->_validation);
-    _iconNamePrefix                         = Inherit::Override(_iconNamePrefix, base->_iconNamePrefix);
-    _packageTypes                           = Inherit::Override(_packageTypes, base->_packageTypes);
-    _hasInfoPlist                           = Inherit::Override(_hasInfoPlist, base->_hasInfoPlist);
-    _hasInfoPlistStrings                    = Inherit::Override(_hasInfoPlistStrings, base->_hasInfoPlistStrings);
-    _isWrapper                              = Inherit::Override(_isWrapper, base->_isWrapper);
-    _isJava                                 = Inherit::Override(_isJava, base->_isJava);
-    _supportsZeroLink                       = Inherit::Override(_supportsZeroLink, base->_supportsZeroLink);
-    _alwaysPerformSeparateStrip             = Inherit::Override(_alwaysPerformSeparateStrip, base->_alwaysPerformSeparateStrip);
-    _wantsSimpleTargetEditing               = Inherit::Override(_wantsSimpleTargetEditing, base->_wantsSimpleTargetEditing);
-    _addWatchCompanionRequirement           = Inherit::Override(_addWatchCompanionRequirement, base->_addWatchCompanionRequirement);
-    _runsOnProxy                            = Inherit::Override(_runsOnProxy, base->_runsOnProxy);
-    _disableSchemeAutocreation              = Inherit::Override(_disableSchemeAutocreation, base->_disableSchemeAutocreation);
-    _validateEmbeddedBinaries               = Inherit::Override(_validateEmbeddedBinaries, base->_validateEmbeddedBinaries);
-    _supportsOnDemandResources              = Inherit::Override(_supportsOnDemandResources, base->_supportsOnDemandResources);
-    _canEmbedAddressSanitizerLibraries      = Inherit::Override(_canEmbedAddressSanitizerLibraries, base->_canEmbedAddressSanitizerLibraries);
-    _runpathSearchPathForEmbeddedFrameworks = Inherit::Override(_runpathSearchPathForEmbeddedFrameworks, base->_runpathSearchPathForEmbeddedFrameworks);
-    _isEmbeddable                           = Inherit::Override(_isEmbeddable, base->_isEmbeddable);
-    _buildPhaseInjectionsWhenEmbedding      = Inherit::Combine(_buildPhaseInjectionsWhenEmbedding, base->_buildPhaseInjectionsWhenEmbedding);
-    _requiredBuiltProductsDir               = Inherit::Override(_requiredBuiltProductsDir, base->_requiredBuiltProductsDir);
+    _defaultTargetName                           = Inherit::Override(_defaultTargetName, base->_defaultTargetName);
+    _defaultBuildProperties                      = Inherit::Combine(_defaultBuildProperties, base->_defaultBuildProperties);
+    _validation                                  = Inherit::Override(_validation, base->_validation);
+    _iconNamePrefix                              = Inherit::Override(_iconNamePrefix, base->_iconNamePrefix);
+    _packageTypes                                = Inherit::Override(_packageTypes, base->_packageTypes);
+    _hasInfoPlist                                = Inherit::Override(_hasInfoPlist, base->_hasInfoPlist);
+    _hasInfoPlistStrings                         = Inherit::Override(_hasInfoPlistStrings, base->_hasInfoPlistStrings);
+    _isWrapper                                   = Inherit::Override(_isWrapper, base->_isWrapper);
+    _isJava                                      = Inherit::Override(_isJava, base->_isJava);
+    _supportsZeroLink                            = Inherit::Override(_supportsZeroLink, base->_supportsZeroLink);
+    _alwaysPerformSeparateStrip                  = Inherit::Override(_alwaysPerformSeparateStrip, base->_alwaysPerformSeparateStrip);
+    _wantsSimpleTargetEditing                    = Inherit::Override(_wantsSimpleTargetEditing, base->_wantsSimpleTargetEditing);
+    _wantsSimpleTargetEditingWithoutCapabilities = Inherit::Override(_wantsSimpleTargetEditing, base->_wantsSimpleTargetEditingWithoutCapabilities);
+    _addWatchCompanionRequirement                = Inherit::Override(_addWatchCompanionRequirement, base->_addWatchCompanionRequirement);
+    _runsOnProxy                                 = Inherit::Override(_runsOnProxy, base->_runsOnProxy);
+    _disableSchemeAutocreation                   = Inherit::Override(_disableSchemeAutocreation, base->_disableSchemeAutocreation);
+    _validateEmbeddedBinaries                    = Inherit::Override(_validateEmbeddedBinaries, base->_validateEmbeddedBinaries);
+    _supportsOnDemandResources                   = Inherit::Override(_supportsOnDemandResources, base->_supportsOnDemandResources);
+    _canEmbedAddressSanitizerLibraries           = Inherit::Override(_canEmbedAddressSanitizerLibraries, base->_canEmbedAddressSanitizerLibraries);
+    _canEmbedCompilerSanitizerLibraries          = Inherit::Override(_canEmbedCompilerSanitizerLibraries, base->_canEmbedCompilerSanitizerLibraries);
+    _provisioningProfileRequired                 = Inherit::Override(_provisioningProfileRequired, base->_provisioningProfileRequired);
+    _provisioningProfileSupported                = Inherit::Override(_provisioningProfileSupported, base->_provisioningProfileSupported);
+    _runpathSearchPathForEmbeddedFrameworks      = Inherit::Override(_runpathSearchPathForEmbeddedFrameworks, base->_runpathSearchPathForEmbeddedFrameworks);
+    _isEmbeddable                                = Inherit::Override(_isEmbeddable, base->_isEmbeddable);
+    _buildPhaseInjectionsWhenEmbedding           = Inherit::Combine(_buildPhaseInjectionsWhenEmbedding, base->_buildPhaseInjectionsWhenEmbedding);
+    _requiredBuiltProductsDir                    = Inherit::Override(_requiredBuiltProductsDir, base->_requiredBuiltProductsDir);
+    _allowedBuildPhases                          = Inherit::Override(_allowedBuildPhases, base->_allowedBuildPhases);
+    _allowedFileTypes                            = Inherit::Override(_allowedFileTypes, base->_allowedFileTypes);
+    _buildPhaseFileRefAdditions                  = Inherit::Override(_buildPhaseFileRefAdditions, base->_buildPhaseFileRefAdditions);
+    _infoPlistAdditions                          = _infoPlistAdditions ?: base->_infoPlistAdditions ? base->_infoPlistAdditions->copy().release() : nullptr;
 
     return true;
 }
@@ -283,3 +367,31 @@ Check(ext::optional<std::string> const &check, ext::optional<std::string> const 
 {
 }
 
+ProductType::FileReference::
+FileReference()
+{
+}
+
+bool ProductType::FileReference::
+parse(plist::Dictionary const *dict)
+{
+    std::unordered_set<std::string> seen;
+    auto unpack = plist::Keys::Unpack("FileReference", dict, &seen);
+
+    auto RVN = unpack.cast <plist::String> ("RegionVariantName");
+    auto P   = unpack.cast <plist::String> ("Path");
+
+    if (!unpack.complete(true)) {
+        fprintf(stderr, "%s", unpack.errorText().c_str());
+    }
+
+    if (RVN != nullptr) {
+        _regionVariantName = RVN->value();
+    }
+
+    if (P != nullptr) {
+        _path = pbxsetting::Value::Parse(P->value());
+    }
+
+    return true;
+}
